@@ -7,6 +7,7 @@ import appointmentModel from "../models/appointmentModel.js";
 import { v2 as cloudinary } from 'cloudinary'
 import stripe from "stripe";
 import razorpay from 'razorpay';
+import { sendAppointmentBookedEmails } from "../utils/email.js";
 
 
 // Gateway Initialize
@@ -21,6 +22,7 @@ const registerUser = async (req, res) => {
 
     try {
         const { name, email, password } = req.body;
+        const normalizedEmail = email?.trim().toLowerCase();
 
         // checking for all data to register user
         if (!name || !email || !password) {
@@ -28,8 +30,14 @@ const registerUser = async (req, res) => {
         }
 
         // validating email format
-        if (!validator.isEmail(email)) {
+        if (!validator.isEmail(normalizedEmail)) {
             return res.json({ success: false, message: "Please enter a valid email" })
+        }
+
+        const existingUser = await userModel.findOne({ email: normalizedEmail })
+
+        if (existingUser) {
+            return res.json({ success: false, message: "User already exists" })
         }
 
         // validating strong password
@@ -43,7 +51,7 @@ const registerUser = async (req, res) => {
 
         const userData = {
             name,
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
         }
 
@@ -55,6 +63,9 @@ const registerUser = async (req, res) => {
 
     } catch (error) {
         console.log(error)
+        if (error.code === 11000) {
+            return res.json({ success: false, message: "User already exists" })
+        }
         res.json({ success: false, message: error.message })
     }
 }
@@ -139,25 +150,22 @@ const bookAppointment = async (req, res) => {
     try {
 
         const { userId, docId, slotDate, slotTime } = req.body
-        const doctor = await doctorModel.findById(docId).select("-password")
+        const slotPath = `slots_booked.${slotDate}`
 
-        if (!doctor || !doctor.available) {
-            return res.json({ success: false, message: 'Doctor Not Available' })
-        }
+        const doctor = await doctorModel.findOneAndUpdate(
+            {
+                _id: docId,
+                available: true,
+                [slotPath]: { $ne: slotTime },
+            },
+            {
+                $push: { [slotPath]: slotTime },
+            },
+            { new: true }
+        ).select("-password")
 
-        let slots_booked = doctor.slots_booked
-
-        // checking for slot availablity 
-        if (slots_booked[slotDate]) {
-            if (slots_booked[slotDate].includes(slotTime)) {
-                return res.json({ success: false, message: 'Slot Not Available' })
-            }
-            else {
-                slots_booked[slotDate].push(slotTime)
-            }
-        } else {
-            slots_booked[slotDate] = []
-            slots_booked[slotDate].push(slotTime)
+        if (!doctor) {
+            return res.json({ success: false, message: 'Slot Not Available' })
         }
 
         const userData = await userModel.findById(userId).select("-password")
@@ -187,10 +195,21 @@ const bookAppointment = async (req, res) => {
         }
 
         const newAppointment = new appointmentModel(appointmentData)
-        await newAppointment.save()
+        try {
+            await newAppointment.save()
+        } catch (error) {
+            await doctorModel.findByIdAndUpdate(docId, {
+                $pull: { [slotPath]: slotTime }
+            })
 
-        // save new slots data in docData
-        await doctorModel.findByIdAndUpdate(docId, { slots_booked })
+            if (error.code === 11000) {
+                return res.json({ success: false, message: 'Slot Not Available' })
+            }
+
+            throw error
+        }
+
+        await sendAppointmentBookedEmails({ userData, doctor, slotDate, slotTime })
 
         res.json({ success: true, message: 'Appointment Booked' })
 

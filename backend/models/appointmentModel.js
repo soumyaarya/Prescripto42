@@ -14,5 +14,13 @@ const appointmentSchema = new mongoose.Schema({
     isCompleted: { type: Boolean, default: false }
 })
 
+appointmentSchema.index(
+    { docId: 1, slotDate: 1, slotTime: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { cancelled: false }
+    }
+)
+
 const appointmentModel = mongoose.models.appointment || mongoose.model("appointment", appointmentSchema)
 export default appointmentModel

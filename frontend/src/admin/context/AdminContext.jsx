@@ -38,8 +38,10 @@ const AdminContextProvider = (props) => {
 
             const { data } = await axios.post(backendUrl + '/api/admin/change-availability', { docId }, { headers: { aToken } })
             if (data.success) {
+                setDoctors(prev => prev.map(doctor => (
+                    doctor._id === data.doctor._id ? data.doctor : doctor
+                )))
                 toast.success(data.message)
-                getAllDoctors()
             } else {
                 toast.error(data.message)
             }

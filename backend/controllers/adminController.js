@@ -11,9 +11,9 @@ const loginAdmin = async (req, res) => {
     try {
 
         const { email, password } = req.body
-        console.log("⏺️ Incoming:", email, password);
-        console.log("⏺️ ENV:", process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD);
-        console.log("⏺️ Type Check:", typeof email, typeof process.env.ADMIN_EMAIL);
+        //console.log("⏺️ Incoming:", email, password);
+        //console.log("⏺️ ENV:", process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD);
+        //console.log("⏺️ Type Check:", typeof email, typeof process.env.ADMIN_EMAIL);
 
 
         if (email.trim() === process.env.ADMIN_EMAIL.trim() && password.trim() === process.env.ADMIN_PASSWORD.trim()) {

@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
+import { sendAppointmentCancelledEmails } from "../utils/email.js";
 
 // API for doctor Login 
 const loginDoctor = async (req, res) => {
@@ -55,6 +56,19 @@ const appointmentCancel = async (req, res) => {
         const appointmentData = await appointmentModel.findById(appointmentId)
         if (appointmentData && appointmentData.docId === docId) {
             await appointmentModel.findByIdAndUpdate(appointmentId, { cancelled: true })
+            await doctorModel.findByIdAndUpdate(docId, {
+                $pull: { [`slots_booked.${appointmentData.slotDate}`]: appointmentData.slotTime }
+            })
+
+            const doctorData = await doctorModel.findById(docId).select("email")
+            const emailData = appointmentData.toObject()
+            emailData.doctorEmail = doctorData?.email
+
+            await sendAppointmentCancelledEmails({
+                appointmentData: emailData,
+                cancelledBy: "doctor"
+            })
+
             return res.json({ success: true, message: 'Appointment Cancelled' })
         }
 
@@ -109,8 +123,18 @@ const changeAvailablity = async (req, res) => {
         const { docId } = req.body
 
         const docData = await doctorModel.findById(docId)
-        await doctorModel.findByIdAndUpdate(docId, { available: !docData.available })
-        res.json({ success: true, message: 'Availablity Changed' })
+
+        if (!docData) {
+            return res.json({ success: false, message: 'Doctor not found' })
+        }
+
+        const doctor = await doctorModel.findByIdAndUpdate(
+            docId,
+            { available: !docData.available },
+            { new: true }
+        ).select('-password')
+
+        res.json({ success: true, message: 'Availablity Changed', doctor })
 
     } catch (error) {
         console.log(error)

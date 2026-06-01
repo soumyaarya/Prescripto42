@@ -141,6 +141,31 @@ To set up and run this project locally:
    npm run dev
    ```
 
+## 🚀 Render Deployment
+
+This repository includes a `render.yaml` Blueprint for deploying both apps on Render:
+
+- `prescripto-backend`: Node/Express web service from `backend/`
+- `prescripto-frontend`: React/Vite static site from `frontend/`
+
+### Deployment Steps
+
+1. Push the repository to GitHub.
+2. In Render, create a new Blueprint from this repository.
+3. Add the required backend environment variables from `backend/.env.example`.
+4. Add the required frontend environment variables from `frontend/.env.example`.
+5. After the backend deploys, set:
+   ```env
+   VITE_BACKEND_URL=https://your-backend-service.onrender.com
+   ```
+6. After the frontend deploys, set backend CORS:
+   ```env
+   CORS_ORIGIN=https://your-frontend-service.onrender.com
+   ```
+7. Redeploy both services after updating environment variables.
+
+Never commit real `.env` files. Use Render environment variables for secrets.
+
 ## 📦 Folder Structure
 
 ```plaintext

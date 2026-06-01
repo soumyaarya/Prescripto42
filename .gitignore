@@ -5,11 +5,16 @@ node_modules/
 .env
 .env.*
 *.env
+!.env.example
+!*.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # Build and output folders (common for React, Vite, etc.)
 dist/
 build/
 out/
+dist-ssr/
 
 # Log files
 npm-debug.log*
@@ -25,8 +30,14 @@ jest-test-results.json
 
 # Cache, temp, and framework output
 .cache/
+.eslintcache
+.vite/
 .next/
+.vercel/
+.netlify/
 .tmp/
+tmp/
+temp/
 
 # OS generated files
 .DS_Store
@@ -40,3 +51,7 @@ Thumbs.db
 
 # Misc
 *.local
+
+# Runtime uploads/temp files
+uploads/
+backend/uploads/
